@@ -1,4 +1,4 @@
-# Hyperspectral Image Simulator
+# Hyperspectral Image Simulator (HyperPaint)
 
 Version 0.1.0
 
