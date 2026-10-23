@@ -31,6 +31,6 @@ sessions, exports, limitations, and workspace persistence.
 
 License
 -------
-Released under the MIT License; see LICENSE. This permits commercial use,
-modification, and redistribution when the license and copyright notice are
-retained. See README.md for details.
+Released under CC BY-SA 4.0; see LICENSE. Sharing and adaptation, including
+commercial use, require attribution and a link to the license. Shared
+adaptations must use the same or a compatible CC BY-SA license.

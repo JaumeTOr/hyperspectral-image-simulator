@@ -18,7 +18,7 @@ Hyperspectral Image Simulator is an interactive MATLAB tool for exploring how co
 - Programming language: MATLAB and HTML/JavaScript
 - Version: 0.1.0
 - Keywords: MATLAB, chemometrics, hyperspectral imaging, spectral simulation, synthetic data, concentration maps
-- License: MIT
+- License: CC BY-SA 4.0
 - Authors: Jaume Torner Ortiz
 - Affiliation: Universitat de Barcelona
 - Contact email: enter privately in the Square submission form; do not add it to the public repository
@@ -33,4 +33,4 @@ Hyperspectral Image Simulator is an interactive MATLAB tool for exploring how co
 - `CITATION.cff`: machine-readable citation metadata
 - `README.md` and `README.txt`: usage and requirements
 - `.gitignore`: excludes MATLAB workspace data and editor backups
-- `LICENSE`: MIT License
+- `LICENSE`: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)

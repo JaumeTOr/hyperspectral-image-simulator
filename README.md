@@ -23,7 +23,7 @@ simulating datasets to test your methodologies.
 - `example_usage.m`: creates example spectra in the workspace and launches
   the app.
 - `CITATION.cff`: machine-readable citation metadata.
-- `LICENSE`: MIT License.
+- `LICENSE`: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
 - `.gitignore`: excludes MATLAB workspace data and editor backups.
 - `SUBMISSION_DRAFT.md`: proposed listing information for Lovelace's Square.
 
@@ -128,7 +128,8 @@ software citation metadata.
 
 ## License and authorship
 
-This project is released under the MIT License; see `LICENSE`. The MIT License
-allows commercial use, modification, and redistribution, provided the license
-and copyright notice are retained. Public distribution also requires the
-contributor to have rights to share all included code and assets.
+This project is licensed under CC BY-SA 4.0; see `LICENSE`. You may share and
+adapt it, including commercially, if you give appropriate credit, link to the
+license, and indicate changes. If you share adapted material, you must use
+the same or a compatible CC BY-SA license. Public distribution also requires
+the contributor to have rights to share all included code and assets.
