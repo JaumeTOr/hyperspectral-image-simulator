@@ -23,7 +23,7 @@ Hyperspectral Image Simulator is an interactive MATLAB tool for exploring how co
 - Affiliation: Universitat de Barcelona
 - Contact email: enter privately in the Square submission form; do not add it to the public repository
 - Citation request: Please cite Jaume Torner Ortiz when using the software in an article; see `CITATION.cff`.
-- Repository or download: GitHub planned; suggested repository name `hyperspectral-image-simulator`; URL pending creation
+- Repository or download: https://github.com/JaumeTOr/hyperspectral-image-simulator
 
 ## Included files
 
