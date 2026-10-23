@@ -1,5 +1,5 @@
-HYPERSPECTRAL IMAGE SIMULATOR
-============================
+HYPERSPECTRAL IMAGE SIMULATOR (HYPERPAINT)
+==========================================
 
 Purpose
 -------

@@ -2,7 +2,7 @@
 
 ## Name
 
-Hyperspectral Image Simulator
+Hyperspectral Image Simulator (HyperPaint)
 
 ## Short description
 
@@ -10,7 +10,7 @@ MATLAB GUI for designing component spectra and spatial concentration maps, then 
 
 ## Extended description
 
-Hyperspectral Image Simulator is an interactive MATLAB tool for exploring how component spectra combine across a spatial image. Users can create Gaussian-peak or cubic-polynomial spectra, import component spectra from the MATLAB workspace, and paint per-component concentration maps. The app combines component spectra according to the image maps and adds Gaussian noise to generate sampled mixture spectra or a hyperspectral image cube. Use the GUI to inspect pure spectra, mixtures, and concentration patterns, then export the generated arrays and metadata to the MATLAB workspace. The channel axis is an index; the simulator does not calibrate wavelengths or model a specific instrument.
+Hyperspectral Image Simulator (HyperPaint) is an interactive MATLAB tool for exploring how component spectra combine across a spatial image. Users can create Gaussian-peak or cubic-polynomial spectra, import component spectra from the MATLAB workspace, and paint per-component concentration maps. The app combines component spectra according to the image maps and adds Gaussian noise to generate sampled mixture spectra or a hyperspectral image cube. Use the GUI to inspect pure spectra, mixtures, and concentration patterns, then export the generated arrays and metadata to the MATLAB workspace. The channel axis is an index; the simulator does not calibrate wavelengths or model a specific instrument.
 
 ## Suggested technical details
 

@@ -48,7 +48,7 @@ classdef HyperspectralImageSimulator < matlab.apps.AppBase
 
             app.UIFigure = uifigure('Visible', 'off');
             app.UIFigure.Position = [100 100 figWidth figHeight];
-            app.UIFigure.Name = 'Hyperspectral Image Simulator';
+            app.UIFigure.Name = 'Hyperspectral Image Simulator (HyperPaint)';
             app.UIFigure.Color = [0.91 0.92 0.93];
             app.UIFigure.AutoResizeChildren = 'off';
             app.UIFigure.CloseRequestFcn = createCallbackFcn(app, @closeRequest, true);
@@ -830,7 +830,7 @@ classdef HyperspectralImageSimulator < matlab.apps.AppBase
                     sourceName = sprintf('session "%s"', savedSession.name);
                     if savedSession.formatVersion > 1
                         error('HyperspectralImageSimulator:UnsupportedSessionVersion', ...
-                            'This session was saved with a newer Hyperspectral Image Simulator format.');
+                            'This session was saved with a newer Hyperspectral Image Simulator (HyperPaint) format.');
                     end
                 case 'sessionMetadata'
                     if ~evalin('base', 'exist(''sessionMetadata'', ''var'')')
@@ -842,7 +842,7 @@ classdef HyperspectralImageSimulator < matlab.apps.AppBase
                     if isstruct(savedSession) && isscalar(savedSession) && isfield(savedSession, 'state')
                         if isfield(savedSession, 'formatVersion') && savedSession.formatVersion > 1
                             error('HyperspectralImageSimulator:UnsupportedSessionVersion', ...
-                                'This session was saved with a newer Hyperspectral Image Simulator format.');
+                                'This session was saved with a newer Hyperspectral Image Simulator (HyperPaint) format.');
                         end
                         savedState = savedSession.state;
                     else
@@ -862,7 +862,7 @@ classdef HyperspectralImageSimulator < matlab.apps.AppBase
 
             if ~isstruct(savedState) || ~isscalar(savedState) || ~isfield(savedState, 'components')
                 error('HyperspectralImageSimulator:InvalidSession', ...
-                    'The selected workspace item (%s) does not contain valid Hyperspectral Image Simulator session data.', ...
+                    'The selected workspace item (%s) does not contain valid Hyperspectral Image Simulator (HyperPaint) session data.', ...
                     sourceName);
             end
 

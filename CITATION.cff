@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software in a scholarly work, please cite it."
-title: "Hyperspectral Image Simulator"
+title: "Hyperspectral Image Simulator (HyperPaint)"
 authors:
   - family-names: "Torner Ortiz"
     given-names: "Jaume"

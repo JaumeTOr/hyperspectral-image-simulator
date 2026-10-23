@@ -1,4 +1,4 @@
-%% Example usage for Hyperspectral Image Simulator
+%% Example usage for Hyperspectral Image Simulator (HyperPaint)
 % Creates two example component spectra in the MATLAB base workspace and
 % launches the app. The spectra are synthetic examples, not measured data.
 

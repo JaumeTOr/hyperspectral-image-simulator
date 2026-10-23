@@ -5,7 +5,7 @@ Version 0.1.0
 Author: Jaume Torner Ortiz  
 Affiliation: Universitat de Barcelona
 
-Hyperspectral Image Simulator is a MATLAB graphical tool for building
+Hyperspectral Image Simulator (HyperPaint) is a MATLAB graphical tool for building
 synthetic hyperspectral images. It includes: customizing component spectra, drawing their spatial concentration maps, and
 simulating mixed spectra and hyperspectral image cubes. It is intended for
 simulating datasets to test your methodologies.
@@ -121,7 +121,7 @@ seeds. Randomized pixel concentrations use the browser's random generator.
 
 If you use this software in an article, please cite:
 
-> Torner Ortiz, J. (2026). *Hyperspectral Image Simulator* (Version 0.1.0) [Computer software]. Universitat de Barcelona.
+> Torner Ortiz, J. (2026). *Hyperspectral Image Simulator (HyperPaint)* (Version 0.1.0) [Computer software]. Universitat de Barcelona.
 
 The accompanying `CITATION.cff` file provides machine-readable author and
 software citation metadata.
