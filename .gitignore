@@ -1,0 +1,5 @@
+# MATLAB workspace exports and saved sessions
+*.mat
+
+# MATLAB editor backups
+*.asv

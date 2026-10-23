@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyperspectral Image Simulator</title>
+<style>
+:root {
+    --bg-primary: #E8EBED; --bg-secondary: #F2F4F6; --bg-tertiary: #EBF0F4;
+    --text-primary: #1E293B; --text-secondary: #64748B; --text-tertiary: #94A3B8;
+    --border-color: #E2E8F0;
+    --accent-primary: #42A5F5; --accent-secondary: #90CAF9;
+    --accent-gradient-start: #90CAF9; --accent-gradient-end: #64B5F6;
+    --button-bg: #F1F5F9; --button-border: #E2E8F0; --button-text: #475569;
+    --shadow-color: rgba(0, 0, 0, 0.05); --shadow-accent: rgba(100, 181, 246, 0.3);
+    --status-indicator: #10B981; --error-color: #EF4444; --warning-color: #F59E0B;
+    --spectrum-color: rgba(66, 165, 245, 1.0);
+    --baseline-color: rgba(239, 68, 68, 0.9);
+    --threshold-color: rgba(245, 158, 11, 0.9);
+    --mean-spectrum-color: rgba(80, 80, 80, 1.0);
+    --all-spectra-color: rgba(160, 160, 160, 0.4);
+    --grid-color: rgba(0, 0, 0, 0.08);
+    --axis-text: #64748B;
+}
+body.dark-mode {
+    --bg-primary: #0F172A; --bg-secondary: #1E293B; --bg-tertiary: #334155;
+    --text-primary: #F1F5F9; --text-secondary: #CBD5E1; --text-tertiary: #94A3B8;
+    --border-color: #334155;
+    --accent-primary: #60A5FA; --accent-secondary: #93C5FD;
+    --accent-gradient-start: #60A5FA; --accent-gradient-end: #3B82F6;
+    --button-bg: #334155; --button-border: #475569; --button-text: #E2E8F0;
+    --shadow-color: rgba(0, 0, 0, 0.3); --shadow-accent: rgba(59, 130, 246, 0.4);
+    --status-indicator: #34D399; --error-color: #F87171; --warning-color: #FBBF24;
+    --spectrum-color: rgba(96, 165, 250, 1.0);
+    --baseline-color: rgba(248, 113, 113, 0.9);
+    --threshold-color: rgba(251, 191, 36, 0.9);
+    --mean-spectrum-color: rgba(200, 200, 200, 1.0);
+    --all-spectra-color: rgba(160, 160, 160, 0.25);
+    --grid-color: rgba(255, 255, 255, 0.08);
+    --axis-text: #94A3B8;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-primary); color: var(--text-primary);
+    overflow: hidden; height: 100vh; display: flex; flex-direction: column;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 12px; }
+.toast {
+    background: var(--bg-secondary); border-radius: 14px; padding: 14px 18px;
+    border: 1px solid var(--border-color); box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+    min-width: 280px; max-width: 430px; animation: toastIn 0.25s ease;
+}
+.toast-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+.toast-message { font-size: 13px; color: var(--text-secondary); }
+.toast-success { border-left: 4px solid var(--status-indicator); }
+.toast-error { border-left: 4px solid var(--error-color); }
+.toast-warning { border-left: 4px solid var(--warning-color); }
+.toast-info { border-left: 4px solid var(--accent-primary); }
+@keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.modal-backdrop { position: fixed; inset: 0; z-index: 300; display: none; align-items: center; justify-content: center; background: rgba(15,23,42,0.48); }
+.modal-backdrop.active { display: flex; }
+.modal-dialog { width: min(440px, calc(100vw - 32px)); padding: 20px; border-radius: 14px; background: var(--bg-secondary); border: 1px solid var(--border-color); box-shadow: 0 18px 48px rgba(0,0,0,0.25); }
+.modal-dialog h2 { margin-bottom: 8px; font-size: 18px; }
+.modal-dialog p { margin-bottom: 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
+.help-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.help-dialog-header h2 { margin: 0; }
+.help-dialog .help-copy { margin: 0; }
+.modal-dialog select { margin: 2px 0 14px; }
+.modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.main-content { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+.controls-panel {
+    width: 408px; min-width: 300px; max-width: 620px;
+    background: var(--bg-secondary); border-right: 1px solid var(--border-color);
+    overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0;
+}
+.controls-panel::-webkit-scrollbar { width: 8px; }
+.controls-panel::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.resize-handle { width: 6px; cursor: col-resize; background: transparent; flex-shrink: 0; position: relative; z-index: 10; }
+.resize-handle:hover, .resize-handle.active { background: var(--accent-primary); }
+.resize-handle::after {
+    content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 2px; height: 32px; border-radius: 1px; background: var(--border-color);
+}
+.resize-handle:hover::after, .resize-handle.active::after { background: white; }
+.work-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; padding: 8px; gap: 8px; }
+.top-tabs {
+    display: flex; gap: 8px; align-items: center; flex-shrink: 0;
+    background: var(--bg-secondary); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 8px; box-shadow: 0 1px 4px var(--shadow-color);
+}
+.tab-btn {
+    border: 1px solid var(--button-border); background: var(--button-bg); color: var(--button-text);
+    border-radius: 10px; padding: 9px 14px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.tab-btn:hover { background: var(--accent-secondary); border-color: var(--accent-primary); }
+.tab-btn.active { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
+.tab-item { position: relative; flex: 0 0 auto; }
+.tab-item .tab-btn { min-width: 160px; padding: 9px 42px 9px 16px; }
+.tab-item .tab-help { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); z-index: 1; }
+.tab-spacer { flex: 1; }
+.session-actions { display: flex; align-items: center; gap: 6px; }
+.info-btn {
+    width: 24px; height: 24px; padding: 0; flex: 0 0 24px; display: inline-flex;
+    align-items: center; justify-content: center; border-radius: 50%;
+    border: 1px solid var(--button-border); background: var(--button-bg); color: var(--button-text);
+    font: 600 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; cursor: pointer;
+}
+.info-btn:not(.help-close) { color: var(--text-secondary); opacity: 0.76; font-size: 12px; font-weight: 500; text-align: center; padding-bottom: 1px; }
+.info-btn:hover { background: var(--accent-secondary); border-color: var(--accent-primary); color: var(--text-primary); }
+.info-btn:not(.help-close):hover { color: var(--text-primary); opacity: 1; }
+.info-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.info-btn:not(.help-close):focus-visible { opacity: 1; }
+.section-heading, .heading-with-help { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.section-heading { justify-content: space-between; margin-bottom: 10px; }
+.section-heading .section-title { margin-bottom: 0; }
+.refresh-preview-btn { width: 34px; height: 34px; padding: 0; flex: 0 0 34px; border-radius: 50%; }
+.refresh-preview-btn svg { display: block; width: 18px; height: 18px; }
+.workspace { flex: 1; min-height: 0; display: none; gap: 8px; overflow: hidden; }
+.workspace.active { display: grid; }
+#spectra-workspace { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+#image-workspace { grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.55fr); grid-template-rows: minmax(0, 1fr); position: relative; }
+.image-side-panel { display: flex; flex-direction: column; min-height: 0; gap: 8px; padding-bottom: 56px; overflow: hidden; }
+.image-side-panel .section { flex-shrink: 0; }
+.image-raw-panel { flex: 1; min-height: 180px; }
+.image-export-button { position: absolute; right: 0; bottom: 0; min-width: 190px; }
+.section {
+    background: var(--bg-tertiary); border-radius: 14px; padding: 14px;
+    border: 1px solid var(--border-color); box-shadow: 0 1px 4px var(--shadow-color);
+}
+.section-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+.param-box { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.param-box:last-child { margin-bottom: 0; }
+.row { display: flex; align-items: center; gap: 8px; }
+.row + .row { margin-top: 8px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+label { font-size: 13px; color: var(--text-secondary); font-weight: 500; display: block; margin-bottom: 4px; }
+.input, select {
+    width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color);
+    border-radius: 8px; padding: 7px 9px; font-size: 13px; color: var(--text-primary);
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+}
+.input:focus, select:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 2px rgba(66,165,245,0.15); }
+input[type="number"] { -moz-appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.number-slide-popover {
+    position: fixed; z-index: 180; width: 34px; height: 150px; padding: 10px 8px;
+    background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.18); display: none; align-items: center; justify-content: center;
+}
+.number-slide-popover.active { display: flex; }
+.number-slide-popover input[type="range"] {
+    width: 126px; height: 8px; transform: rotate(-90deg); transform-origin: center;
+}
+input[type="range"] { -webkit-appearance: none; width: 100%; height: 8px; background: #CBD5E1; border-radius: 4px; outline: none; }
+body.dark-mode input[type="range"] { background: #475569; }
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 22px; height: 22px; background: var(--accent-primary);
+    border-radius: 50%; cursor: pointer; box-shadow: 0 2px 6px rgba(66,165,245,0.4);
+}
+input[type="checkbox"] { accent-color: var(--accent-primary); }
+.slider-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.slider-value { color: var(--accent-primary); font-family: "SF Mono", Consolas, Monaco, monospace; font-size: 12px; font-weight: 600; }
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
+    border: none; border-radius: 12px; padding: 10px 14px; color: white; font-size: 14px; font-weight: 600;
+    cursor: pointer; box-shadow: 0 3px 10px var(--shadow-accent);
+}
+.btn-secondary, .btn-danger, .btn-warning, .icon-btn {
+    background: var(--button-bg); border: 1px solid var(--button-border); border-radius: 10px;
+    padding: 9px 12px; color: var(--button-text); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-secondary:hover, .icon-btn:hover { background: var(--accent-secondary); border-color: var(--accent-primary); }
+.btn-danger { color: var(--error-color); background: rgba(239, 68, 68, 0.08); }
+.btn-warning { color: var(--warning-color); background: rgba(245, 158, 11, 0.09); }
+.icon-btn { width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.component-list { display: flex; flex-direction: column; gap: 6px; }
+.scroll-list { overflow-y: auto; padding-right: 4px; }
+.scroll-list::-webkit-scrollbar { width: 8px; }
+.scroll-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.component-item {
+    display: grid; grid-template-columns: 18px 18px 1fr auto; gap: 8px; align-items: center;
+    padding: 8px; border-radius: 9px; border: 1px solid var(--border-color); background: var(--bg-secondary);
+    cursor: pointer; color: var(--text-primary); font-size: 13px;
+}
+.component-item.active { border-color: var(--accent-primary); box-shadow: 0 0 0 2px rgba(66,165,245,0.12); }
+.visibility-btn {
+    width: 16px; height: 16px; border: none; background: transparent; padding: 0; cursor: pointer; position: relative;
+}
+.visibility-btn::before {
+    content: ""; position: absolute; left: 1px; top: 4px; width: 14px; height: 8px;
+    border: 1.7px solid var(--text-secondary); border-radius: 50%;
+}
+.visibility-btn::after {
+    content: ""; position: absolute; left: 6px; top: 7px; width: 4px; height: 4px;
+    background: var(--text-secondary); border-radius: 50%;
+}
+.visibility-btn.hidden-visual::after {
+    left: 1px; top: 7px; width: 15px; height: 2px; border-radius: 1px;
+    background: var(--error-color); transform: rotate(-35deg);
+}
+.swatch {
+    width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.15);
+    cursor: pointer; padding: 0; appearance: none; background: transparent;
+}
+.swatch:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.component-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.component-name-input {
+    width: 100%; min-width: 0; padding: 2px 4px; border-radius: 5px; border: 1px solid var(--accent-primary);
+    background: var(--bg-primary); color: var(--text-primary); font: inherit;
+}
+.component-color-picker { position: fixed; left: -1000px; top: -1000px; width: 1px; height: 1px; opacity: 0; }
+.muted { color: var(--text-tertiary); font-size: 12px; }
+.chart-container {
+    background: var(--bg-secondary); border-radius: 12px; padding: 8px 10px;
+    border: 1px solid var(--border-color); box-shadow: 0 1px 4px var(--shadow-color);
+    display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+}
+.chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-shrink: 0; }
+.chart-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.chart-wrapper { flex: 1; position: relative; min-height: 0; }
+.chart-wrapper canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--text-secondary); font-size: 12px; margin-top: 4px; }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-line { width: 18px; height: 4px; border-radius: 2px; }
+.canvas-stage {
+    flex: 1; min-height: 0; position: relative; border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--border-color); background-color: #fff;
+    background-image:
+      linear-gradient(45deg, rgba(148,163,184,0.12) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(148,163,184,0.12) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(148,163,184,0.12) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(148,163,184,0.12) 75%);
+    background-size: 24px 24px;
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+}
+.canvas-stage canvas { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+.status-bar {
+    background: var(--bg-secondary); padding: 4px 20px; border-top: 1px solid var(--border-color);
+    display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+}
+.status-left { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.status-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--status-indicator); animation: pulse 2s infinite; }
+.status-indicator.error { background: var(--error-color); animation: none; }
+.status-indicator.processing { background: var(--warning-color); animation: pulse 1s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="toast-container" id="toast-container"></div>
+<div class="modal-backdrop" id="add-component-modal" onclick="closeAddComponentDialog()">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+        <h2>Add component</h2>
+        <p>Create a synthetic component or import one or more spectra from the MATLAB base workspace. Workspace import can also use a cell, string, or character variable for component names.</p>
+        <div class="modal-actions">
+            <button class="btn-primary" onclick="createSyntheticComponent()">Synthetic component</button>
+            <button class="btn-secondary" onclick="importWorkspaceSpectra()">From workspace</button>
+            <button class="btn-secondary" onclick="closeAddComponentDialog()">Cancel</button>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop" id="workspace-import-modal" onclick="closeWorkspaceImportDialog()">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+        <h2>Import spectra from workspace</h2>
+        <p>Choose a numeric vector or matrix. For a matrix, each row is one spectrum and each column is one wavelength.</p>
+        <label for="workspace-spectrum-variable">Spectra variable</label>
+        <select class="input" id="workspace-spectrum-variable"></select>
+        <label for="workspace-names-variable">Component names (optional)</label>
+        <select class="input" id="workspace-names-variable"><option value="">Use names based on the spectra variable</option></select>
+        <p class="muted hidden" id="workspace-import-empty">No numeric vector or matrix variables were found in the MATLAB base workspace.</p>
+        <div class="modal-actions">
+            <button class="btn-primary" id="confirm-workspace-import" onclick="confirmWorkspaceImport()">Import</button>
+            <button class="btn-secondary" onclick="closeWorkspaceImportDialog()">Cancel</button>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop" id="session-save-modal" onclick="closeSessionSaveDialog()">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="session-save-title" onclick="event.stopPropagation()">
+        <h2 id="session-save-title">Save Session</h2>
+        <p>Choose a name for this session. Saving with an existing name will update that saved session.</p>
+        <label for="session-name-input">Session name</label>
+        <input class="input" id="session-name-input" type="text" maxlength="80" autocomplete="off" placeholder="For example, Polymer test">
+        <div class="modal-actions" style="margin-top:14px;">
+            <button class="btn-primary" type="button" onclick="confirmSaveSession()">Save</button>
+            <button class="btn-secondary" type="button" onclick="closeSessionSaveDialog()">Cancel</button>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop" id="session-load-modal" onclick="closeSessionLoadDialog()">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="session-load-title" onclick="event.stopPropagation()">
+        <h2 id="session-load-title">Load Session</h2>
+        <p>Choose a named session or metadata variable from the MATLAB base workspace. Export metadata may not include the image maps.</p>
+        <label for="session-load-select">Available sessions</label>
+        <select class="input" id="session-load-select"></select>
+        <p class="muted hidden" id="session-load-empty">No saved sessions or metadata variables were found in the MATLAB base workspace.</p>
+        <div class="modal-actions">
+            <button class="btn-primary" id="confirm-load-session" type="button" onclick="confirmLoadSession()">Load</button>
+            <button class="btn-secondary" type="button" onclick="closeSessionLoadDialog()">Cancel</button>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop" id="help-modal" onclick="closeHelpDialog()">
+    <div class="modal-dialog help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" onclick="event.stopPropagation()">
+        <div class="help-dialog-header">
+            <h2 id="help-title">Help</h2>
+            <button class="info-btn" id="help-close" type="button" onclick="closeHelpDialog()" aria-label="Close help">×</button>
+        </div>
+        <p class="help-copy" id="help-copy"></p>
+    </div>
+</div>
+<div class="main-content">
+    <div class="controls-panel" id="controls-panel">
+        <div class="section" id="component-list-section">
+            <div class="section-heading">
+                <div class="section-title">Components</div>
+                <button class="info-btn" type="button" onclick="showHelp(event, 'components')" aria-label="Help: Components" title="Help: Components">?</button>
+            </div>
+            <div class="component-list" id="component-list"></div>
+            <div class="grid-3" style="margin-top:10px;">
+                <button class="btn-primary" onclick="showAddComponentDialog()">Add</button>
+                <button class="btn-secondary" id="move-component-up" onclick="moveComponent(-1)">Up</button>
+                <button class="btn-secondary" id="move-component-down" onclick="moveComponent(1)">Down</button>
+            </div>
+            <button class="btn-danger" id="remove-active-component" style="width:100%; margin-top:8px;" onclick="removeComponent()">Remove active</button>
+        </div>
+
+        <div class="section" id="global-spectra-section">
+            <div class="section-heading">
+                <div class="section-title">Global Spectra</div>
+                <button class="info-btn" type="button" onclick="showHelp(event, 'global-spectra')" aria-label="Help: Global Spectra" title="Help: Global Spectra">?</button>
+            </div>
+            <div class="grid-2">
+                <div><label>Bands</label><input class="input" id="nBands" type="number" min="8" max="4096"></div>
+                <div><label>Preview spectra</label><input class="input" id="nPreviewSpectra" type="number" min="1" max="500"></div>
+            </div>
+            <div class="param-box">
+                <div class="slider-head"><label>Noise level</label><span class="slider-value" id="noiseLevelVal"></span></div>
+                <input id="noiseLevel" type="range" min="0" max="0.08" step="0.0005">
+            </div>
+        </div>
+
+        <div class="section" id="component-editor">
+            <div class="section-heading">
+                <div class="section-title">Active Component</div>
+                <button class="info-btn" type="button" onclick="showHelp(event, 'active-component')" aria-label="Help: Active Component" title="Help: Active Component">?</button>
+            </div>
+            <p class="muted hidden" id="no-active-component">No components. Use Add to create or import one.</p>
+            <div id="active-component-controls">
+            <div class="grid-2" id="spectra-component-fields">
+                <div><label>Nature</label><select id="compType"><option value="gaussian">Gaussian peaks</option><option value="polynomial">Polynomial</option><option value="workspace">Workspace spectrum</option></select></div>
+                <div id="comp-offset-field"><label>Offset</label><input class="input" id="compOffset" type="number" step="0.001"></div>
+            </div>
+            <div class="grid-2" id="image-component-options" style="margin-top:8px;">
+                <label class="row"><input id="transparent" type="checkbox"> Transparent layer</label>
+                <label class="row"><input id="randomizePixels" type="checkbox"> Random pixel concentration</label>
+                <label class="row"><input id="edgeTransparent" type="checkbox"> Edge transparency</label>
+                <div><label>Edge girth</label><input class="input" id="edgeGirth" type="number" min="0" max="30"></div>
+            </div>
+            <div class="param-box" id="zero-range-box" style="margin-top:10px;">
+                <div class="section-title">Force Zero Range</div>
+                <div class="grid-2">
+                    <div><label>Start</label><input class="input" id="zeroStart" type="number" min="1" placeholder="NaN"></div>
+                    <div><label>End</label><input class="input" id="zeroEnd" type="number" min="1" placeholder="NaN"></div>
+                </div>
+            </div>
+            <div id="gaussian-editor" class="param-box">
+                <div class="row" style="justify-content:space-between;">
+                    <div class="section-title" style="margin:0;">Gaussian Peaks</div>
+                    <button class="btn-secondary" onclick="addPeak()">Add peak</button>
+                </div>
+                <div id="peak-list"></div>
+            </div>
+            <div id="poly-editor" class="param-box hidden">
+                <div class="section-title">Polynomial Coefficients</div>
+                <div class="grid-2">
+                    <div><label>a3</label><input class="input poly" data-i="0" type="number" step="0.01"></div>
+                    <div><label>a2</label><input class="input poly" data-i="1" type="number" step="0.01"></div>
+                    <div><label>a1</label><input class="input poly" data-i="2" type="number" step="0.01"></div>
+                    <div><label>a0</label><input class="input poly" data-i="3" type="number" step="0.01"></div>
+                </div>
+            </div>
+            <div id="workspace-spectrum-editor" class="param-box hidden">
+                <div class="section-title">Imported workspace spectrum</div>
+                <p class="muted" id="workspace-spectrum-info">The imported spectrum is used directly and has no peak parameters.</p>
+            </div>
+            </div>
+        </div>
+    </div>
+    <div class="resize-handle" id="resize-handle"></div>
+    <div class="work-panel">
+        <div class="top-tabs">
+            <div class="tab-item">
+                <button class="tab-btn active" data-tab="spectra" onclick="setTab('spectra')">Spectra Editor</button>
+                <button class="info-btn tab-help" type="button" onclick="showHelp(event, 'spectra-editor')" aria-label="Help: Spectra Editor" title="Help: Spectra Editor">?</button>
+            </div>
+            <div class="tab-item">
+                <button class="tab-btn" data-tab="image" onclick="setTab('image')">Image Editor</button>
+                <button class="info-btn tab-help" type="button" onclick="showHelp(event, 'image-editor')" aria-label="Help: Image Editor" title="Help: Image Editor">?</button>
+            </div>
+            <div class="tab-spacer"></div>
+            <div class="session-actions">
+                <button class="info-btn" type="button" onclick="showHelp(event, 'toolbar-guide')" aria-label="Toolbar guide" title="Toolbar guide">?</button>
+                <button class="btn-secondary" onclick="saveSession()" title="Save the full editable session to the MATLAB workspace">Save Session</button>
+                <button class="btn-secondary" onclick="loadSession()" title="Load session metadata from the MATLAB workspace">Load Session</button>
+            </div>
+            <button class="icon-btn refresh-preview-btn" type="button" onclick="sendUpdate()" aria-label="Refresh preview now" title="Refresh preview now">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm-6 8c0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3c-3.31 0-6-2.69-6-6z"/></svg>
+            </button>
+            <button class="btn-secondary" onclick="toggleDarkMode()">Dark</button>
+        </div>
+
+        <div class="workspace active" id="spectra-workspace">
+            <div class="chart-container">
+                <div class="chart-header"><div class="heading-with-help"><div class="chart-title">Active Component Detail</div><button class="info-btn" type="button" onclick="showHelp(event, 'active-component-detail')" aria-label="Help: Active Component Detail" title="Help: Active Component Detail">?</button></div></div>
+                <div class="chart-wrapper"><canvas id="active-chart"></canvas></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-header"><div class="heading-with-help"><div class="chart-title">Pure Spectra</div><button class="info-btn" type="button" onclick="showHelp(event, 'pure-spectra')" aria-label="Help: Pure Spectra" title="Help: Pure Spectra">?</button></div></div>
+                <div class="chart-wrapper"><canvas id="pure-chart"></canvas></div>
+                <div class="legend" id="pure-legend"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-header"><div class="heading-with-help"><div class="chart-title">Export-Like Raw Spectra</div><button class="info-btn" type="button" onclick="showHelp(event, 'export-like-raw-spectra')" aria-label="Help: Export-Like Raw Spectra" title="Help: Export-Like Raw Spectra">?</button></div></div>
+                <div class="chart-wrapper"><canvas id="raw-chart"></canvas></div>
+                <div class="legend"><span class="legend-item"><span class="legend-line" style="background:var(--all-spectra-color)"></span>sampled mixtures</span></div>
+            </div>
+            <div class="section">
+                <div class="section-title">Spectra Export</div>
+                <p class="muted">Sends sampled mixture spectra, channel axis, pure spectra, and metadata to the MATLAB workspace.</p>
+                <button class="btn-primary" style="width:100%; margin-top:12px;" onclick="exportSpectra()">Export spectra to workspace</button>
+            </div>
+        </div>
+
+        <div class="workspace" id="image-workspace">
+            <div class="chart-container">
+                <div class="chart-header"><div class="heading-with-help"><div class="chart-title">Concentration Canvas</div><button class="info-btn" type="button" onclick="showHelp(event, 'concentration-canvas')" aria-label="Help: Concentration Canvas" title="Help: Concentration Canvas">?</button></div><div class="muted" id="canvas-meta"></div></div>
+                <div class="canvas-stage"><canvas id="map-canvas"></canvas></div>
+            </div>
+            <div class="image-side-panel">
+                <div class="section">
+                    <div class="section-heading">
+                        <div class="section-title">Brush and Cube</div>
+                        <button class="info-btn" type="button" onclick="showHelp(event, 'brush-and-cube')" aria-label="Help: Brush and Cube" title="Help: Brush and Cube">?</button>
+                    </div>
+                    <div class="grid-2">
+                        <div><label>Rows</label><input class="input" id="rows" type="number" min="2" max="250"></div>
+                        <div><label>Columns</label><input class="input" id="cols" type="number" min="2" max="250"></div>
+                        <div><label>Brush size</label><input class="input" id="brushSize" type="number" min="1" max="50"></div>
+                        <div><label>Brush value</label><input class="input" id="brushValue" type="number" min="0" max="1" step="0.01"></div>
+                        <div><label>Shape</label><select id="brushShape"><option value="circle">Circle</option><option value="square">Square</option></select></div>
+                        <button class="btn-danger" id="clear-active-map" onclick="clearActiveMap()">Clear active</button>
+                    </div>
+                    <div class="grid-2" style="margin-top:8px;">
+                        <button class="btn-warning" onclick="clearAllMaps()">Clear all</button>
+                    </div>
+                </div>
+                <div class="chart-container image-raw-panel">
+                    <div class="chart-header"><div class="heading-with-help"><div class="chart-title">Raw Spectra</div><button class="info-btn" type="button" onclick="showHelp(event, 'image-raw-spectra')" aria-label="Help: Raw Spectra" title="Help: Raw Spectra">?</button></div></div>
+                    <div class="chart-wrapper"><canvas id="image-raw-chart"></canvas></div>
+                    <div class="legend"><span class="legend-item"><span class="legend-line" style="background:var(--all-spectra-color)"></span>sampled mixtures</span></div>
+                </div>
+            </div>
+            <button class="btn-primary image-export-button" onclick="exportCube()">Export cube to workspace</button>
+        </div>
+
+    </div>
+</div>
+<div class="status-bar">
+    <div class="status-left"><span class="status-indicator" id="status-indicator"></span><span id="status-message">Starting...</span></div>
+    <div class="muted" id="status-right">Hyperspectral Image Simulator</div>
+</div>
+<div class="number-slide-popover" id="number-slide-popover"><input id="number-slide" type="range"></div>
+
+<script>
+var htmlComponent = null;
+var state = null;
+var preview = null;
+var activeTab = "spectra";
+var updateTimer = null;
+var drawing = false;
+var lastCellKey = "";
+var componentClickTimer = null;
+var activeNumberInput = null;
+var lastHelpTrigger = null;
+var sessionChoices = [];
+var helpContent = {
+    "components": {
+        title: "Components",
+        text: "Here is your component list. Select one to edit it, add a synthetic or workspace spectrum, change its order, or remove it."
+    },
+    "spectra-editor": {
+        title: "Spectra Editor",
+        text: "Create or import component spectra, adjust each one, and see how pure spectra combine into mixtures. The charts here help you check your changes."
+    },
+    "image-editor": {
+        title: "Image Editor",
+        text: "Paint concentration maps for your components. These maps decide how spectra mix at each image pixel and shape the cube you export."
+    },
+    "toolbar-guide": {
+        title: "Toolbar Guide",
+        text: "Save stores the session under your chosen name; reusing a name updates it. Load restores a saved session. Refresh updates the preview now. Dark switches the theme."
+    },
+    "global-spectra": {
+        title: "Global Spectra",
+        text: "Set the number of wavelength bands and preview samples. Increasing noise adds a little random variation to the simulated measurements."
+    },
+    "active-component": {
+        title: "Active Component",
+        text: "Pick the component you want to work on, then choose its spectrum type and adjust its settings. The highlighted component is the one these controls update.",
+        imageText: "These settings control how the selected component appears in the image. You can make its layer transparent, vary its pixel concentrations, or soften its edges."
+    },
+    "active-component-detail": {
+        title: "Active Component Detail",
+        text: "Take a closer look at the selected component's pure spectrum across the wavelength bands. Adjust its model or settings to see the curve change."
+    },
+    "pure-spectra": {
+        title: "Pure Spectra",
+        text: "Compare each component's spectrum on its own, before the concentration maps mix them together."
+    },
+    "export-like-raw-spectra": {
+        title: "Export-Like Raw Spectra",
+        text: "Here you'll see mixture spectra sampled from your concentration maps, with the selected noise added. Export Spectra sends this type of data to MATLAB."
+    },
+    "concentration-canvas": {
+        title: "Concentration Canvas",
+        text: "Paint the selected component's concentration onto image pixels. The values across components decide which spectrum appears at each pixel."
+    },
+    "brush-and-cube": {
+        title: "Brush and Cube",
+        text: "Choose the image and brush sizes, then set the brush shape and value. When you export, these maps combine with your component spectra to create the cube."
+    },
+    "image-raw-spectra": {
+        title: "Raw Spectra",
+        text: "See mixture spectra sampled from pixels on your canvas. Each line's color shows which component is strongest at that pixel."
+    }
+};
+
+function setup(component) {
+    htmlComponent = component;
+    component.addEventListener("DataChanged", function() {
+        handleMatlabResponse(component.Data);
+    });
+    initResizeHandle();
+    bindInputs();
+    bindNumberSliders();
+    bindCanvas();
+    window.addEventListener("resize", renderAll);
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") {
+            if (document.getElementById("help-modal").classList.contains("active")) closeHelpDialog();
+            else if (document.getElementById("session-save-modal").classList.contains("active")) closeSessionSaveDialog();
+            else if (document.getElementById("session-load-modal").classList.contains("active")) closeSessionLoadDialog();
+            else return;
+            e.preventDefault();
+        }
+        if (e.ctrlKey && String(e.key).toLowerCase() === "d") {
+            e.preventDefault();
+            toggleDarkMode();
+        }
+    });
+    sendAction("uiReady", {});
+}
+
+function showHelp(event, key) {
+    if (event) event.stopPropagation();
+    var content = helpContent[key];
+    if (!content) return;
+    lastHelpTrigger = event && event.currentTarget ? event.currentTarget : null;
+    document.getElementById("help-title").textContent = content.title;
+    document.getElementById("help-copy").textContent = activeTab === "image" && content.imageText ? content.imageText : content.text;
+    document.getElementById("help-modal").classList.add("active");
+    document.getElementById("help-close").focus();
+}
+
+function closeHelpDialog() {
+    document.getElementById("help-modal").classList.remove("active");
+    if (lastHelpTrigger && document.contains(lastHelpTrigger)) lastHelpTrigger.focus();
+    lastHelpTrigger = null;
+}
+
+function handleMatlabResponse(data) {
+    if (!data || data.source !== "matlab") return;
+    var payload = {};
+    try { payload = data.payloadJson ? JSON.parse(data.payloadJson) : {}; } catch (e) { payload = {}; }
+    if (payload.state) state = normalizeState(payload.state);
+    if (payload.preview) preview = payload.preview;
+    if (data.response === "error") {
+        setStatus("error", payload.message || "Error");
+        toast("Error", payload.message || "Unknown error", "error");
+        return;
+    }
+    if (data.response === "workspaceVariables") {
+        showWorkspaceImportDialog(payload);
+        setStatus("success", "Choose workspace variables to import.");
+        return;
+    }
+    if (data.response === "workspaceSessions") {
+        showWorkspaceSessions(payload);
+        setStatus("success", "Choose a session from the MATLAB workspace.");
+        return;
+    }
+    if (payload.message) setStatus("success", payload.message);
+    if (state) {
+        renderControls();
+        renderAll();
+    }
+}
+
+function sendAction(action, payload) {
+    if (!htmlComponent) return;
+    htmlComponent.Data = { source: "html", action: action, payloadJson: JSON.stringify(payload || {}), stamp: Date.now() };
+}
+function sendUpdate() {
+    if (!state) return;
+    setStatus("processing", "Updating preview...");
+    sendAction("updateState", state);
+}
+function scheduleUpdate() {
+    clearTimeout(updateTimer);
+    updateTimer = setTimeout(sendUpdate, 180);
+}
+function setStatus(type, message) {
+    var ind = document.getElementById("status-indicator");
+    ind.className = "status-indicator";
+    if (type === "error") ind.classList.add("error");
+    if (type === "processing") ind.classList.add("processing");
+    document.getElementById("status-message").textContent = message || "";
+}
+function toast(title, message, type) {
+    var el = document.createElement("div");
+    el.className = "toast toast-" + (type || "info");
+    el.innerHTML = '<div class="toast-title">' + escapeHtml(title) + '</div><div class="toast-message">' + escapeHtml(message || "") + '</div>';
+    document.getElementById("toast-container").appendChild(el);
+    setTimeout(function(){ if (el.parentElement) el.remove(); }, 3600);
+}
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(ch) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; });
+}
+function normalizeState(s) {
+    s.components = toArray(s.components || []);
+    s.maps = toArray(s.maps || []);
+    s.opaqueMaps = toArray(s.opaqueMaps || []);
+    s.components.forEach(function(c) {
+        if (c.spectrum === undefined) c.spectrum = [];
+        if (c.hiddenVisual === undefined) c.hiddenVisual = false;
+    });
+    if (s.components.length === 0) {
+        s.activeComponent = 0;
+    } else {
+        var active = Number(s.activeComponent);
+        if (!Number.isFinite(active) || active < 1) active = 1;
+        s.activeComponent = clamp(Math.round(active), 1, s.components.length);
+    }
+    if (!s.brushShape) s.brushShape = "circle";
+    ensureMaps(s);
+    return s;
+}
+function toArray(v) {
+    if (Array.isArray(v)) return v;
+    if (v === undefined || v === null) return [];
+    if (typeof v === "object") {
+        var keys = Object.keys(v);
+        if (keys.every(function(k){ return /^\d+$/.test(k); })) {
+            keys.sort(function(a,b){ return Number(a)-Number(b); });
+            return keys.map(function(k){ return v[k]; });
+        }
+    }
+    return [v];
+}
+function activeComp() {
+    if (!state || !state.components || state.components.length === 0 || state.activeComponent < 1) return null;
+    return state.components[state.activeComponent - 1] || null;
+}
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+function rgbToCss(rgb) { return "rgb(" + Math.round(rgb[0]*255) + "," + Math.round(rgb[1]*255) + "," + Math.round(rgb[2]*255) + ")"; }
+function rgbToHex(rgb) {
+    return "#" + rgb.map(function(v){ var h = Math.round(clamp(v,0,1)*255).toString(16).padStart(2,"0"); return h; }).join("");
+}
+function hexToRgb(hex) {
+    var h = String(hex).replace("#","");
+    return [parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255];
+}
+
+function bindInputs() {
+    var ids = ["nBands","nPreviewSpectra","noiseLevel","compType",
+        "compOffset","transparent","randomizePixels","edgeTransparent","edgeGirth",
+        "zeroStart","zeroEnd","rows","cols","brushSize","brushValue","brushShape"];
+    ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("input", function(){ readControls(id); renderAll(); scheduleUpdate(); });
+        el.addEventListener("change", function(){ readControls(id); renderControls(); renderAll(); scheduleUpdate(); });
+    });
+}
+
+function bindNumberSliders() {
+    var pop = document.getElementById("number-slide-popover");
+    var slider = document.getElementById("number-slide");
+    if (!pop || !slider) return;
+
+    document.addEventListener("focusin", function(ev) {
+        if (isNumberParameter(ev.target)) showNumberSlider(ev.target);
+    });
+    document.addEventListener("pointerdown", function(ev) {
+        if (isNumberParameter(ev.target)) {
+            showNumberSlider(ev.target);
+            return;
+        }
+        if (!pop.contains(ev.target)) hideNumberSlider(true);
+    });
+    document.addEventListener("keydown", function(ev) {
+        if (ev.key === "Escape") hideNumberSlider(true);
+    });
+    window.addEventListener("resize", function(){ if (activeNumberInput) positionNumberSlider(activeNumberInput); });
+
+    slider.addEventListener("input", function() {
+        if (!activeNumberInput) return;
+        activeNumberInput.value = slider.value;
+        activeNumberInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    slider.addEventListener("change", function() {
+        if (!activeNumberInput) return;
+        activeNumberInput.value = slider.value;
+        activeNumberInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+}
+function isNumberParameter(el) {
+    return el && el.tagName === "INPUT" && el.type === "number" && !el.disabled && !el.readOnly;
+}
+function showNumberSlider(input) {
+    var pop = document.getElementById("number-slide-popover");
+    var slider = document.getElementById("number-slide");
+    activeNumberInput = input;
+    syncNumberSliderRange(input, slider);
+    positionNumberSlider(input);
+    pop.classList.add("active");
+}
+function hideNumberSlider(commit) {
+    var pop = document.getElementById("number-slide-popover");
+    if (commit && activeNumberInput) activeNumberInput.dispatchEvent(new Event("change", { bubbles: true }));
+    activeNumberInput = null;
+    if (pop) pop.classList.remove("active");
+}
+function syncNumberSliderRange(input, slider) {
+    var value = Number(input.value);
+    if (!Number.isFinite(value)) value = 0;
+    var step = Number(input.step);
+    if (!Number.isFinite(step) || step <= 0) step = 1;
+    var minAttr = input.getAttribute("min");
+    var maxAttr = input.getAttribute("max");
+    var min = minAttr === null || minAttr === "" ? NaN : Number(minAttr);
+    var max = maxAttr === null || maxAttr === "" ? NaN : Number(maxAttr);
+    if (!Number.isFinite(min) && shouldUseNonNegativeSlider(input)) min = 0;
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        var span = Math.max(Math.abs(value) * 0.5, step * 100, 1);
+        if (!Number.isFinite(min)) min = value - span;
+        if (!Number.isFinite(max)) max = value + span;
+    }
+    if (min === max) max = min + step * 100;
+    slider.min = String(min);
+    slider.max = String(max);
+    slider.step = String(step);
+    slider.value = String(clamp(value, min, max));
+}
+function shouldUseNonNegativeSlider(input) {
+    var key = ((input.id || "") + " " + (input.dataset ? (input.dataset.k || "") : "") + " " + labelTextForInput(input)).toLowerCase();
+    return /(abundance|width|noise|channel|position|rows|columns|radius|value|bands|preview|girth|start|end)/.test(key) && !/offset/.test(key);
+}
+function labelTextForInput(input) {
+    var label = input.closest("div") ? input.closest("div").querySelector("label") : null;
+    return label ? label.textContent : "";
+}
+function positionNumberSlider(input) {
+    var pop = document.getElementById("number-slide-popover");
+    if (!pop) return;
+    var rect = input.getBoundingClientRect();
+    var left = rect.right + 8;
+    if (left + 34 > window.innerWidth) left = rect.left - 42;
+    var top = rect.top + rect.height / 2 - 75;
+    top = clamp(top, 8, Math.max(8, window.innerHeight - 158));
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+}
+
+function readControls(changedId) {
+    if (!state) return;
+    state.nBands = Math.round(clamp(num("nBands", state.nBands), 8, 4096));
+    state.nPreviewSpectra = Math.round(clamp(num("nPreviewSpectra", state.nPreviewSpectra), 1, 500));
+    state.noiseLevel = Math.max(0, num("noiseLevel", state.noiseLevel));
+    state.rows = Math.round(clamp(num("rows", state.rows), 2, 250));
+    state.cols = Math.round(clamp(num("cols", state.cols), 2, 250));
+    state.brushSize = Math.round(clamp(num("brushSize", state.brushSize), 1, 50));
+    state.brushValue = clamp(num("brushValue", state.brushValue), 0, 1);
+    state.brushShape = val("brushShape", state.brushShape);
+    ensureMaps();
+
+    var c = activeComp();
+    if (!c) return;
+    if (document.getElementById("compName")) c.name = val("compName", c.name);
+    if (document.getElementById("compColor")) c.color = hexToRgb(val("compColor", rgbToHex(c.color)));
+    var oldType = c.type || "gaussian";
+    c.type = val("compType", oldType);
+    if (c.type === "polynomial" && oldType !== "polynomial" && isFlatPoly(c.polyCoeffs)) {
+        c.polyCoeffs = [-0.35, 0.15, 0.75, 0.15];
+    }
+    c.offset = num("compOffset", c.offset || 0);
+    c.intensityMean = c.intensityMean === undefined ? 1 : c.intensityMean;
+    c.transparent = checked("transparent");
+    c.randomizePixels = checked("randomizePixels");
+    c.edgeTransparent = checked("edgeTransparent");
+    c.edgeGirth = Math.round(Math.max(0, num("edgeGirth", c.edgeGirth || 0)));
+    c.zeroStart = parseNullable("zeroStart");
+    c.zeroEnd = parseNullable("zeroEnd");
+    if (c.type === "polynomial") {
+        document.querySelectorAll(".poly").forEach(function(el) {
+            var i = Number(el.dataset.i);
+            c.polyCoeffs = c.polyCoeffs || [0,0,0,0];
+            c.polyCoeffs[i] = Number(el.value || 0);
+        });
+    }
+}
+function num(id, fallback) {
+    var el = document.getElementById(id);
+    var v = Number(el && el.value);
+    return Number.isFinite(v) ? v : fallback;
+}
+function val(id, fallback) {
+    var el = document.getElementById(id);
+    return el ? el.value : fallback;
+}
+function checked(id) {
+    var el = document.getElementById(id);
+    return !!(el && el.checked);
+}
+function parseNullable(id) {
+    var el = document.getElementById(id);
+    if (!el || String(el.value).trim() === "") return null;
+    var v = Number(el.value);
+    return Number.isFinite(v) ? v : null;
+}
+
+function renderControls() {
+    if (!state) return;
+    setValue("nBands", state.nBands);
+    setValue("nPreviewSpectra", state.nPreviewSpectra);
+    setValue("noiseLevel", state.noiseLevel);
+    document.getElementById("noiseLevelVal").textContent = Number(state.noiseLevel).toFixed(4);
+    setValue("rows", state.rows);
+    setValue("cols", state.cols);
+    setValue("brushSize", state.brushSize);
+    setValue("brushValue", state.brushValue);
+    setValue("brushShape", state.brushShape);
+    var hasWorkspaceSpectrum = state.components.some(function(component){ return component.type === "workspace"; });
+    document.getElementById("nBands").disabled = hasWorkspaceSpectrum;
+
+    var list = document.getElementById("component-list");
+    list.innerHTML = "";
+    var hasComponents = state.components.length > 0;
+    document.getElementById("move-component-up").disabled = !hasComponents;
+    document.getElementById("move-component-down").disabled = !hasComponents;
+    document.getElementById("remove-active-component").disabled = !hasComponents;
+    document.getElementById("clear-active-map").disabled = !hasComponents;
+    state.components.forEach(function(c, i) {
+        var item = document.createElement("div");
+        item.className = "component-item" + (i + 1 === state.activeComponent ? " active" : "");
+        item.onclick = function(ev){ handleComponentClick(ev, i); };
+        item.ondblclick = function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            clearTimeout(componentClickTimer);
+            startComponentRename(i, name);
+        };
+
+        var visibility = document.createElement("button");
+        visibility.type = "button";
+        visibility.className = "visibility-btn" + (c.hiddenVisual ? " hidden-visual" : "");
+        visibility.title = c.hiddenVisual ? "Show component visualization" : "Hide component visualization";
+        visibility.onclick = function(ev) {
+            ev.stopPropagation();
+            toggleComponentVisualization(i);
+        };
+
+        var swatch = document.createElement("button");
+        swatch.type = "button";
+        swatch.className = "swatch";
+        swatch.title = "Choose component color";
+        swatch.style.background = rgbToCss(c.color);
+        swatch.onclick = function(ev) {
+            ev.stopPropagation();
+            chooseComponentColor(i);
+        };
+
+        var name = document.createElement("span");
+        name.className = "component-name";
+        name.title = "Double click to rename";
+        name.textContent = c.name || ("Component " + (i+1));
+        name.ondblclick = function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            clearTimeout(componentClickTimer);
+            startComponentRename(i, name);
+        };
+
+        var idx = document.createElement("span");
+        idx.className = "muted";
+        idx.textContent = i + 1;
+
+        item.appendChild(visibility);
+        item.appendChild(swatch);
+        item.appendChild(name);
+        item.appendChild(idx);
+        list.appendChild(item);
+    });
+
+    var c = activeComp();
+    var activeControls = document.getElementById("active-component-controls");
+    var emptyNotice = document.getElementById("no-active-component");
+    if (!c) {
+        activeControls.classList.add("hidden");
+        emptyNotice.classList.remove("hidden");
+        updateEditorVisibility();
+        return;
+    }
+    activeControls.classList.remove("hidden");
+    emptyNotice.classList.add("hidden");
+    var workspaceOption = document.querySelector('#compType option[value="workspace"]');
+    if (workspaceOption) workspaceOption.disabled = c.type !== "workspace";
+    setValue("compType", c.type || "gaussian");
+    setValue("compOffset", c.offset || 0);
+    setChecked("transparent", !!c.transparent);
+    setChecked("randomizePixels", !!c.randomizePixels);
+    setChecked("edgeTransparent", !!c.edgeTransparent);
+    setValue("edgeGirth", c.edgeGirth || 0);
+    setValue("zeroStart", c.zeroStart === null || c.zeroStart === undefined ? "" : c.zeroStart);
+    setValue("zeroEnd", c.zeroEnd === null || c.zeroEnd === undefined ? "" : c.zeroEnd);
+    document.getElementById("gaussian-editor").classList.toggle("hidden", c.type === "polynomial");
+    document.getElementById("poly-editor").classList.toggle("hidden", c.type !== "polynomial");
+    document.querySelectorAll(".poly").forEach(function(el) {
+        var i = Number(el.dataset.i);
+        setValueEl(el, (c.polyCoeffs || [0,0,0,0])[i] || 0);
+        el.oninput = function() {
+            var comp = activeComp();
+            if (!comp) return;
+            comp.polyCoeffs = comp.polyCoeffs || [0,0,0,0];
+            comp.polyCoeffs[i] = Number(el.value || 0);
+            renderAll();
+            scheduleUpdate();
+        };
+        el.onchange = function() {
+            readControls();
+            renderAll();
+            scheduleUpdate();
+        };
+    });
+    renderPeakEditor();
+    var workspaceInfo = document.getElementById("workspace-spectrum-info");
+    if (workspaceInfo && c.type === "workspace") {
+        workspaceInfo.textContent = "Imported spectrum with " + (c.spectrum || []).length + " wavelength columns. The curve is used directly, with no peaks or shape parameters.";
+    }
+    updateEditorVisibility();
+}
+function setValue(id, v) { var el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; }
+function setValueEl(el, v) { if (document.activeElement !== el) el.value = v; }
+function setChecked(id, v) { var el = document.getElementById(id); if (el) el.checked = v; }
+function handleComponentClick(ev, index) {
+    if (ev.target && ev.target.classList && ev.target.classList.contains("component-name-input")) return;
+    clearTimeout(componentClickTimer);
+    if (ev.detail > 1) return;
+    componentClickTimer = setTimeout(function() {
+        selectComponent(index);
+    }, 180);
+}
+function selectComponent(index) {
+    readControls();
+    state.activeComponent = index + 1;
+    renderControls();
+    renderAll();
+    scheduleUpdate();
+}
+function chooseComponentColor(index) {
+    readControls();
+    state.activeComponent = index + 1;
+
+    var picker = document.createElement("input");
+    picker.type = "color";
+    picker.className = "component-color-picker";
+    picker.value = rgbToHex(state.components[index].color || [0.2,0.6,0.9]);
+    document.body.appendChild(picker);
+
+    picker.oninput = function() {
+        state.components[index].color = hexToRgb(picker.value);
+        renderControls();
+        renderAll();
+        scheduleUpdate();
+    };
+    picker.onchange = function() {
+        state.components[index].color = hexToRgb(picker.value);
+        picker.remove();
+        renderControls();
+        renderAll();
+        scheduleUpdate();
+    };
+    picker.click();
+}
+function toggleComponentVisualization(index) {
+    if (!state || !state.components[index]) return;
+    state.components[index].hiddenVisual = !state.components[index].hiddenVisual;
+    renderControls();
+    renderAll();
+    scheduleUpdate();
+}
+function startComponentRename(index, nameEl) {
+    readControls();
+    state.activeComponent = index + 1;
+
+    var input = document.createElement("input");
+    input.className = "component-name-input";
+    input.type = "text";
+    input.value = state.components[index].name || ("Component " + (index + 1));
+
+    nameEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    var cancelled = false;
+    function commit() {
+        if (cancelled) return;
+        var nextName = input.value.trim() || ("Component " + (index + 1));
+        state.components[index].name = nextName;
+        renderControls();
+        renderAll();
+        scheduleUpdate();
+    }
+
+    input.onblur = commit;
+    input.onkeydown = function(ev) {
+        if (ev.key === "Enter") input.blur();
+        if (ev.key === "Escape") {
+            cancelled = true;
+            renderControls();
+        }
+    };
+}
+function isFlatPoly(coeffs) {
+    coeffs = toArray(coeffs || []);
+    if (coeffs.length === 0) return true;
+    return coeffs.every(function(v){ return Math.abs(Number(v) || 0) < 1e-12; });
+}
+
+function showAddComponentDialog() {
+    document.getElementById("add-component-modal").classList.add("active");
+}
+function closeAddComponentDialog() {
+    document.getElementById("add-component-modal").classList.remove("active");
+}
+function createSyntheticComponent() {
+    closeAddComponentDialog();
+    addComponent();
+}
+function importWorkspaceSpectra() {
+    closeAddComponentDialog();
+    readControls();
+    setStatus("processing", "Reading MATLAB workspace variables...");
+    sendAction("listWorkspaceVariables", { state: state });
+}
+function showWorkspaceImportDialog(payload) {
+    var spectraSelect = document.getElementById("workspace-spectrum-variable");
+    var namesSelect = document.getElementById("workspace-names-variable");
+    var importButton = document.getElementById("confirm-workspace-import");
+    var emptyNotice = document.getElementById("workspace-import-empty");
+    var spectraVariables = toArray(payload.spectraVariables || []);
+    var nameVariables = toArray(payload.nameVariables || []);
+
+    spectraSelect.innerHTML = "";
+    spectraVariables.forEach(function(variable) {
+        var option = document.createElement("option");
+        option.value = variable.name;
+        option.textContent = variable.label || variable.name;
+        spectraSelect.appendChild(option);
+    });
+    if (spectraVariables.length === 0) {
+        var emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "No numeric spectrum variables found";
+        spectraSelect.appendChild(emptyOption);
+        emptyNotice.classList.remove("hidden");
+    } else {
+        emptyNotice.classList.add("hidden");
+    }
+    importButton.disabled = spectraVariables.length === 0;
+
+    namesSelect.innerHTML = "";
+    var defaultNameOption = document.createElement("option");
+    defaultNameOption.value = "";
+    defaultNameOption.textContent = "Use names based on the spectra variable";
+    namesSelect.appendChild(defaultNameOption);
+    nameVariables.forEach(function(variable) {
+        var option = document.createElement("option");
+        option.value = variable.name;
+        option.textContent = variable.label || variable.name;
+        namesSelect.appendChild(option);
+    });
+
+    document.getElementById("workspace-import-modal").classList.add("active");
+}
+function closeWorkspaceImportDialog() {
+    var modal = document.getElementById("workspace-import-modal");
+    if (!modal.classList.contains("active")) return;
+    modal.classList.remove("active");
+    setStatus("success", "Workspace import cancelled.");
+}
+function confirmWorkspaceImport() {
+    var sourceName = document.getElementById("workspace-spectrum-variable").value;
+    if (!sourceName) return;
+    var namesVariableName = document.getElementById("workspace-names-variable").value;
+    document.getElementById("workspace-import-modal").classList.remove("active");
+    setStatus("processing", "Importing workspace spectra...");
+    sendAction("importWorkspaceSpectra", {
+        state: state,
+        sourceName: sourceName,
+        namesVariableName: namesVariableName
+    });
+}
+
+function openSaveSessionDialog() {
+    var modal = document.getElementById("session-save-modal");
+    var nameInput = document.getElementById("session-name-input");
+    nameInput.value = "";
+    modal.classList.add("active");
+    nameInput.focus();
+}
+function closeSessionSaveDialog() {
+    document.getElementById("session-save-modal").classList.remove("active");
+}
+function openLoadSessionDialog() {
+    clearTimeout(updateTimer);
+    updateTimer = null;
+    setStatus("processing", "Checking the MATLAB workspace for sessions...");
+    sendAction("listSessions", {});
+}
+function closeSessionLoadDialog() {
+    document.getElementById("session-load-modal").classList.remove("active");
+}
+function showWorkspaceSessions(payload) {
+    var select = document.getElementById("session-load-select");
+    var emptyNotice = document.getElementById("session-load-empty");
+    var loadButton = document.getElementById("confirm-load-session");
+    sessionChoices = toArray(payload.sessions || []);
+    select.innerHTML = "";
+    sessionChoices.forEach(function(session, index) {
+        var option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = session.name || "Unnamed session";
+        select.appendChild(option);
+    });
+    emptyNotice.classList.toggle("hidden", sessionChoices.length > 0);
+    loadButton.disabled = sessionChoices.length === 0;
+    document.getElementById("session-load-modal").classList.add("active");
+    if (sessionChoices.length > 0) select.focus();
+}
+function confirmSaveSession() {
+    var sessionName = document.getElementById("session-name-input").value.trim();
+    if (!sessionName) {
+        toast("Session name needed", "Enter a name before saving.", "warning");
+        document.getElementById("session-name-input").focus();
+        return;
+    }
+    if (!state) return;
+    document.getElementById("session-save-modal").classList.remove("active");
+    readControls();
+    setStatus("processing", "Saving session to the MATLAB workspace...");
+    sendAction("saveSession", { name: sessionName, state: state });
+}
+function confirmLoadSession() {
+    var index = Number(document.getElementById("session-load-select").value);
+    var session = sessionChoices[index];
+    if (!session) return;
+    closeSessionLoadDialog();
+    setStatus("processing", "Loading session from the MATLAB workspace...");
+    sendAction("loadSession", { source: session.source, name: session.name });
+}
+
+function renderPeakEditor() {
+    var c = activeComp();
+    var box = document.getElementById("peak-list");
+    box.innerHTML = "";
+    toArray(c.peaks || []).forEach(function(p, i) {
+        var div = document.createElement("div");
+        div.className = "param-box";
+        div.innerHTML =
+            '<div class="row" style="justify-content:space-between;"><strong class="muted">Peak ' + (i+1) + '</strong><button class="btn-danger" onclick="removePeak(' + i + ')">Remove</button></div>' +
+            '<div class="grid-3" style="margin-top:8px;">' +
+            '<div><label>Channel</label><input class="input peak-input" data-i="' + i + '" data-k="position" type="number" min="1" max="' + state.nBands + '" value="' + fmt(p.position,1) + '"></div>' +
+            '<div><label>Width</label><input class="input peak-input" data-i="' + i + '" data-k="width" type="number" min="0" value="' + fmt(p.width,1) + '"></div>' +
+            '<div><label>Abundance</label><input class="input peak-input" data-i="' + i + '" data-k="abundance" type="number" min="0" step="0.01" value="' + fmt(p.abundance,3) + '"></div>' +
+            '</div>';
+        box.appendChild(div);
+    });
+    document.querySelectorAll(".peak-input").forEach(function(el) {
+        el.addEventListener("input", function() {
+            var c = activeComp();
+            var p = c.peaks[Number(el.dataset.i)];
+            p[el.dataset.k] = constrainedNumberValue(el);
+            renderAll();
+            scheduleUpdate();
+        });
+    });
+}
+function fmt(v, n) { return Number(v || 0).toFixed(n); }
+
+function constrainedNumberValue(el) {
+    var v = Number(el.value || 0);
+    if (!Number.isFinite(v)) v = 0;
+    var minAttr = el.getAttribute("min");
+    var maxAttr = el.getAttribute("max");
+    if (minAttr !== null && minAttr !== "") v = Math.max(Number(minAttr), v);
+    if (maxAttr !== null && maxAttr !== "") v = Math.min(Number(maxAttr), v);
+    return v;
+}
+
+function addComponent() {
+    readControls();
+    var wasEmpty = state.components.length === 0;
+    var n = state.components.length + 1;
+    var color = componentColor(n);
+    var c = {
+        id: n, name: "Component " + n, color: color, type: "gaussian", spectrum: [],
+        peaks: [
+            { position: 10 + Math.random()*Math.max(20, state.nBands - 20), width: 6 + Math.random()*18, abundance: 0.5 + Math.random()*0.7 },
+            { position: 10 + Math.random()*Math.max(20, state.nBands - 20), width: 8 + Math.random()*22, abundance: 0.3 + Math.random()*0.5 }
+        ],
+        polyCoeffs: [-0.35,0.15,0.75,0.15], intensityMean: 1, offset: 0.02,
+        zeroStart: null, zeroEnd: null, transparent: false, edgeTransparent: false, edgeGirth: 2, randomizePixels: false, hiddenVisual: false
+    };
+    state.components.push(c);
+    state.activeComponent = state.components.length;
+    ensureMaps();
+    if (wasEmpty) state.maps[0] = solidModeMap(state.rows * state.cols);
+    renderControls();
+    renderAll();
+    scheduleUpdate();
+}
+function removeComponent() {
+    if (!state || state.components.length === 0) return;
+    ensureMaps();
+    var idx = state.activeComponent - 1;
+    state.components.splice(idx, 1);
+    state.maps.splice(idx, 1);
+    state.opaqueMaps.splice(idx, 1);
+    state.activeComponent = state.components.length === 0 ? 0 :
+        clamp(state.activeComponent, 1, state.components.length);
+    renderControls();
+    renderAll();
+    scheduleUpdate();
+}
+function moveComponent(dir) {
+    if (!state || state.components.length < 2) return;
+    ensureMaps();
+    var i = state.activeComponent - 1;
+    var j = i + dir;
+    if (j < 0 || j >= state.components.length) return;
+    swap(state.components, i, j);
+    swap(state.maps, i, j);
+    swap(state.opaqueMaps, i, j);
+    state.activeComponent = j + 1;
+    renderControls();
+    renderAll();
+    scheduleUpdate();
+}
+function swap(a, i, j) { var t = a[i]; a[i] = a[j]; a[j] = t; }
+function addPeak() {
+    var c = activeComp();
+    c.peaks = toArray(c.peaks || []);
+    var maxBand = Math.max(1, Math.round(Number(state.nBands) || 1));
+    var position = 1 + Math.random() * Math.max(0, maxBand - 1);
+    var width = clamp(Math.round(maxBand * 0.08), 1, Math.max(1, maxBand));
+    c.peaks.push({ position: position, width: width, abundance: 0.5 });
+    renderControls();
+    renderAll();
+    scheduleUpdate();
+}
+function removePeak(i) {
+    var c = activeComp();
+    c.peaks = toArray(c.peaks || []);
+    if (c.peaks.length <= 1) return;
+    c.peaks.splice(i, 1);
+    renderControls();
+    renderAll();
+    scheduleUpdate();
+}
+function hsvColor(i) {
+    var h = ((i * 0.61803398875) % 1) * 6;
+    var c = 0.88, x = c * (1 - Math.abs(h % 2 - 1)), m = 0.08;
+    var rgb = h < 1 ? [c,x,0] : h < 2 ? [x,c,0] : h < 3 ? [0,c,x] : h < 4 ? [0,x,c] : h < 5 ? [x,0,c] : [c,0,x];
+    return rgb.map(function(v){ return v + m; });
+}
+function componentColor(i) {
+    var base = [[0,0,1], [1,0,0], [0,1,0]];
+    return base[i - 1] || hsvColor(i);
+}
+function zeroMap(n) { return new Array(n).fill(0); }
+function solidModeMap(n) { return new Array(n).fill(1); }
+function normalizeValueMap(map, n, fillFirst) {
+    var src = toArray(map).map(Number);
+    var out = zeroMap(n);
+    if (fillFirst && src.length === 0) out.fill(1);
+    for (var i=0; i<Math.min(n, src.length); i++) out[i] = clamp(Number(src[i]) || 0, 0, 1);
+    return out;
+}
+function normalizeModeMap(map, n) {
+    var src = toArray(map).map(Number);
+    var out = solidModeMap(n);
+    for (var i=0; i<Math.min(n, src.length); i++) out[i] = Number(src[i]) > 0 ? 1 : 0;
+    return out;
+}
+
+function ensureMaps(target) {
+    var s = target || state;
+    if (!s) return;
+    var n = s.rows * s.cols;
+    s.maps = toArray(s.maps || []);
+    s.opaqueMaps = toArray(s.opaqueMaps || []);
+    while (s.maps.length < s.components.length) s.maps.push(zeroMap(n));
+    while (s.maps.length > s.components.length) s.maps.pop();
+    while (s.opaqueMaps.length < s.components.length) s.opaqueMaps.push([]);
+    while (s.opaqueMaps.length > s.components.length) s.opaqueMaps.pop();
+    s.maps = s.maps.map(function(m, i) {
+        return normalizeValueMap(m, n, i === 0);
+    });
+    s.opaqueMaps = s.opaqueMaps.map(function(m, i) {
+        return normalizeModeMap(m, n);
+    });
+}
+function clearActiveMap() {
+    if (!state || state.components.length === 0 || state.activeComponent < 1) return;
+    ensureMaps();
+    var n = state.rows * state.cols;
+    state.maps[state.activeComponent - 1] = zeroMap(n);
+    state.opaqueMaps[state.activeComponent - 1] = solidModeMap(n);
+    renderAll();
+    scheduleUpdate();
+}
+function clearAllMaps() {
+    ensureMaps();
+    var n = state.rows * state.cols;
+    state.maps = state.components.map(function() {
+        return zeroMap(n);
+    });
+    state.opaqueMaps = state.components.map(function() {
+        return solidModeMap(n);
+    });
+    renderAll();
+    scheduleUpdate();
+}
+
+function setTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.toggle("active", b.dataset.tab === tab); });
+    document.querySelectorAll(".workspace").forEach(function(w){ w.classList.remove("active"); });
+    document.getElementById(tab + "-workspace").classList.add("active");
+    updateEditorVisibility();
+    setTimeout(renderAll, 30);
+    scheduleUpdate();
+}
+function updateEditorVisibility() {
+    var globalSpectra = document.getElementById("global-spectra-section");
+    var imageOptions = document.getElementById("image-component-options");
+    var spectraFields = document.getElementById("spectra-component-fields");
+    var zeroBox = document.getElementById("zero-range-box");
+    var gaussian = document.getElementById("gaussian-editor");
+    var poly = document.getElementById("poly-editor");
+    var workspace = document.getElementById("workspace-spectrum-editor");
+    var offset = document.getElementById("comp-offset-field");
+    var spectraMode = activeTab === "spectra";
+    var imageMode = activeTab === "image";
+    var c = activeComp();
+    var workspaceMode = !!c && c.type === "workspace";
+    var polynomialMode = !!c && c.type === "polynomial";
+    var gaussianMode = !!c && c.type !== "polynomial" && c.type !== "workspace";
+    if (globalSpectra) globalSpectra.classList.toggle("hidden", !spectraMode);
+    if (spectraFields) spectraFields.classList.toggle("hidden", !spectraMode);
+    if (spectraFields) spectraFields.style.gridTemplateColumns = workspaceMode ? "1fr" : "";
+    if (offset) offset.classList.toggle("hidden", workspaceMode);
+    if (imageOptions) imageOptions.classList.toggle("hidden", !imageMode);
+    if (zeroBox) zeroBox.classList.toggle("hidden", !spectraMode || workspaceMode);
+    if (gaussian) gaussian.classList.toggle("hidden", !(spectraMode && gaussianMode));
+    if (poly) poly.classList.toggle("hidden", !(spectraMode && polynomialMode));
+    if (workspace) workspace.classList.toggle("hidden", !(spectraMode && workspaceMode));
+}
+function toggleDarkMode() {
+    document.body.classList.toggle("dark-mode");
+    renderAll();
+}
+
+function bindCanvas() {
+    var canvas = document.getElementById("map-canvas");
+    canvas.addEventListener("pointerdown", function(e) {
+        drawing = true;
+        lastCellKey = "";
+        canvas.setPointerCapture(e.pointerId);
+        paintAtEvent(e);
+    });
+    canvas.addEventListener("pointermove", function(e) { if (drawing) paintAtEvent(e); });
+    canvas.addEventListener("pointerup", function(e) {
+        drawing = false;
+        canvas.releasePointerCapture(e.pointerId);
+        scheduleUpdate();
+    });
+    canvas.addEventListener("pointercancel", function(){ drawing = false; scheduleUpdate(); });
+}
+function paintAtEvent(e) {
+    if (!state || state.components.length === 0 || state.activeComponent < 1) return;
+    ensureMaps();
+    var canvas = document.getElementById("map-canvas");
+    var rect = canvas.getBoundingClientRect();
+    var x = clamp(e.clientX - rect.left, 0, rect.width - 1);
+    var y = clamp(e.clientY - rect.top, 0, rect.height - 1);
+    var col = Math.floor(x / rect.width * state.cols);
+    var row = Math.floor(y / rect.height * state.rows);
+    var key = row + ":" + col;
+    if (key === lastCellKey) return;
+    lastCellKey = key;
+    var size = clamp(Math.round(Number(state.brushSize) || 1), 1, 50);
+    var before = Math.floor((size - 1) / 2);
+    var after = size - 1 - before;
+    var centerOffset = (after - before) / 2;
+    var circleRadius = Math.max(0.3, size / 2 - 0.2);
+    var edgeRadius = Math.max(0.5, size / 2);
+    var map = state.maps[state.activeComponent - 1];
+    var opaqueMap = state.opaqueMaps[state.activeComponent - 1];
+    var comp = activeComp();
+    var girth = Math.max(0, Math.round(Number(comp.edgeGirth || 0)));
+    for (var rr = Math.max(0, row - before); rr <= Math.min(state.rows - 1, row + after); rr++) {
+        for (var cc = Math.max(0, col - before); cc <= Math.min(state.cols - 1, col + after); cc++) {
+            var dr = rr - row;
+            var dc = cc - col;
+            var centeredRow = dr - centerOffset;
+            var centeredCol = dc - centerOffset;
+            var dist = state.brushShape === "square" ?
+                Math.max(Math.abs(centeredRow), Math.abs(centeredCol)) :
+                Math.sqrt(centeredRow*centeredRow + centeredCol*centeredCol);
+            if (state.brushShape !== "square" && dist > circleRadius) continue;
+            var idx = cc * state.rows + rr;
+            paintLayerPixel(map, opaqueMap, idx, dist, edgeRadius, girth, comp);
+        }
+    }
+    renderMapCanvas();
+}
+function paintLayerPixel(map, opaqueMap, idx, dist, radius, edgeGirth, comp) {
+    var value = state.brushValue;
+    var isSolid = !comp.transparent;
+    if (comp.edgeTransparent && edgeGirth > 0) {
+        var edgeStart = Math.max(0, radius - edgeGirth);
+        if (dist > edgeStart) {
+            var edgeFactor = clamp((radius - dist) / Math.max(1, edgeGirth), 0, 1);
+            value *= edgeFactor;
+            if (edgeFactor < 0.999) isSolid = false;
+        }
+    }
+    if (comp.randomizePixels) value = Math.random() * value;
+    value = clamp(value, 0, 1);
+    map[idx] = value;
+    if (value > 0) opaqueMap[idx] = isSolid ? 1 : 0;
+}
+
+function renderAll() {
+    if (!state) return;
+    renderPureChart();
+    renderRawChart();
+    renderActiveChart();
+    renderMapCanvas();
+    document.getElementById("status-right").textContent = state.components.length + " components | " + state.nBands + " bands";
+}
+
+function getColors() {
+    var cs = getComputedStyle(document.documentElement);
+    return {
+        grid: cs.getPropertyValue("--grid-color").trim(),
+        text: cs.getPropertyValue("--axis-text").trim(),
+        all: cs.getPropertyValue("--all-spectra-color").trim(),
+        mean: cs.getPropertyValue("--mean-spectrum-color").trim(),
+        spectrum: cs.getPropertyValue("--spectrum-color").trim()
+    };
+}
+function setupCanvas(id) {
+    var canvas = document.getElementById(id);
+    if (!canvas || canvas.offsetParent === null) return null;
+    var rect = canvas.parentElement.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    var w = Math.max(10, Math.round(rect.width));
+    var h = Math.max(10, Math.round(rect.height));
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return { canvas: canvas, ctx: ctx, w: w, h: h };
+}
+var M = { left: 52, right: 16, top: 12, bottom: 38 };
+function range(arrs) {
+    var mn = Infinity, mx = -Infinity;
+    arrs.forEach(function(a){ toArray(a).forEach(function(v){ v = Number(v); if (Number.isFinite(v)) { mn = Math.min(mn, v); mx = Math.max(mx, v); } }); });
+    if (!Number.isFinite(mn)) { mn = 0; mx = 1; }
+    var pad = (mx - mn) * 0.06 || 0.1;
+    return [mn - pad, mx + pad];
+}
+function drawGrid(ctx, w, h, xMin, xMax, yMin, yMax, xLabel, yLabel) {
+    var colors = getColors();
+    var pw = w - M.left - M.right, ph = h - M.top - M.bottom;
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle = colors.grid; ctx.lineWidth = 1;
+    for (var i=0;i<=6;i++) { var x = M.left + pw*i/6; ctx.beginPath(); ctx.moveTo(x,M.top); ctx.lineTo(x,M.top+ph); ctx.stroke(); }
+    for (var j=0;j<=4;j++) { var y = M.top + ph - ph*j/4; ctx.beginPath(); ctx.moveTo(M.left,y); ctx.lineTo(M.left+pw,y); ctx.stroke(); }
+    ctx.strokeStyle = colors.text; ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.moveTo(M.left,M.top+ph); ctx.lineTo(M.left+pw,M.top+ph); ctx.moveTo(M.left,M.top); ctx.lineTo(M.left,M.top+ph); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = colors.text; ctx.font = "12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (i=0;i<=6;i++) { ctx.fillText((xMin + (xMax-xMin)*i/6).toFixed(0), M.left + pw*i/6, M.top+ph+5); }
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for (j=0;j<=4;j++) { var yv = yMin + (yMax-yMin)*j/4; ctx.fillText(Math.abs(yv) < 1000 ? yv.toFixed(2) : yv.toExponential(1), M.left-5, M.top+ph-ph*j/4); }
+    ctx.globalAlpha = 0.65; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(xLabel || "Channel", M.left+pw/2, M.top+ph+22);
+    ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.translate(12, M.top+ph/2); ctx.rotate(-Math.PI/2); ctx.fillText(yLabel || "Intensity",0,0); ctx.restore(); ctx.globalAlpha = 1;
+    return { pw: pw, ph: ph };
+}
+function drawLine(ctx, x, y, xMin, xMax, yMin, yMax, color, lw, dash) {
+    var pw = ctx._plot.pw, ph = ctx._plot.ph;
+    ctx.strokeStyle = color; ctx.lineWidth = lw || 1.5; ctx.setLineDash(dash || []);
+    ctx.beginPath();
+    var started = false;
+    var xr = xMax - xMin || 1, yr = yMax - yMin || 1;
+    for (var i=0;i<y.length;i++) {
+        var px = M.left + (x[i]-xMin)/xr*pw;
+        var py = M.top + ph - (y[i]-yMin)/yr*ph;
+        if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+}
+function getPreviewArray(name) { return preview && preview[name] ? toArray(preview[name]) : []; }
+function matrixRows(mat) {
+    mat = toArray(mat);
+    if (mat.length === 0) return [];
+    if (Array.isArray(mat[0])) return mat.map(toArray);
+    return [mat.map(Number)];
+}
+function displayedPureRows() {
+    if (!preview || !state || state.components.length === 0) return [];
+    return matrixRows(preview.pureSpectra).map(function(row, i) {
+        var offset = Number((state.components[i] && state.components[i].offset) || 0);
+        return row.map(function(v){ return Number(v || 0) + offset; });
+    });
+}
+function renderPureChart() {
+    var c = setupCanvas("pure-chart"); if (!c || !preview) return;
+    var lambda = getPreviewArray("lambda").map(Number);
+    var rows = displayedPureRows();
+    var yr = range(rows);
+    c.ctx._plot = drawGrid(c.ctx, c.w, c.h, lambda[0] || 0, lambda[lambda.length-1] || 1, yr[0], yr[1], "Channel", "Response");
+    rows.forEach(function(y, i){
+        if (state.components[i] && state.components[i].hiddenVisual) return;
+        drawLine(c.ctx, lambda, y, lambda[0], lambda[lambda.length-1], yr[0], yr[1], rgbToCss(state.components[i].color), 2);
+    });
+    var leg = document.getElementById("pure-legend");
+    leg.innerHTML = state.components.filter(function(comp){ return !comp.hiddenVisual; }).map(function(comp){ return '<span class="legend-item"><span class="legend-line" style="background:' + rgbToCss(comp.color) + '"></span>' + escapeHtml(comp.name) + '</span>'; }).join("");
+}
+function renderRawChart() {
+    renderRawChartOnCanvas("raw-chart");
+    renderRawChartOnCanvas("image-raw-chart");
+}
+function renderRawChartOnCanvas(canvasId) {
+    var c = setupCanvas(canvasId); if (!c || !preview) return;
+    var lambda = getPreviewArray("lambda").map(Number);
+    var rows = matrixRows(preview.rawSpectra);
+    var yr = range(rows);
+    c.ctx._plot = drawGrid(c.ctx, c.w, c.h, lambda[0] || 0, lambda[lambda.length-1] || 1, yr[0], yr[1], "Channel", "Signal");
+    var dom = getPreviewArray("rawDominant");
+    rows.forEach(function(y, i){
+        var k = Math.max(0, Number(dom[i] || 1) - 1);
+        var color = state.components.length > 0 && state.components[k] ?
+            rgba(state.components[k].color, 0.32) : getColors().all;
+        drawLine(c.ctx, lambda, y, lambda[0], lambda[lambda.length-1], yr[0], yr[1], color, 0.7);
+    });
+}
+function renderActiveChart() {
+    var c = setupCanvas("active-chart"); if (!c || !preview) return;
+    var lambda = getPreviewArray("lambda").map(Number);
+    var rows = displayedPureRows();
+    var y = rows[state.activeComponent - 1] || [];
+    var yr = range([y]);
+    c.ctx._plot = drawGrid(c.ctx, c.w, c.h, lambda[0] || 0, lambda[lambda.length-1] || 1, yr[0], yr[1], "Channel", "Active");
+    var component = activeComp();
+    if (component) {
+        drawLine(c.ctx, lambda, y, lambda[0], lambda[lambda.length-1], yr[0], yr[1], rgbToCss(component.color), 2.4);
+    }
+}
+function rgba(rgb, a) { return "rgba(" + Math.round(rgb[0]*255) + "," + Math.round(rgb[1]*255) + "," + Math.round(rgb[2]*255) + "," + a + ")"; }
+
+function renderMapCanvas() {
+    if (!state) return;
+    var canvas = document.getElementById("map-canvas");
+    if (!canvas || canvas.offsetParent === null) return;
+    var rect = canvas.parentElement.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(10, Math.round(rect.width*dpr));
+    canvas.height = Math.max(10, Math.round(rect.height*dpr));
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    var w = rect.width, h = rect.height;
+    ctx.clearRect(0,0,w,h);
+    ensureMaps();
+    var cellW = w/state.cols, cellH = h/state.rows;
+    ctx.fillStyle = "rgba(255,255,255,0.72)";
+    ctx.fillRect(0, 0, w, h);
+    var weights = visibleLocal();
+    for (var r=0;r<state.rows;r++) {
+        for (var col=0;col<state.cols;col++) {
+            var idx = col*state.rows + r;
+            var red = 0, green = 0, blue = 0, total = 0;
+            var visibleIndex = 0;
+            for (var k=0;k<state.components.length;k++) {
+                if (state.components[k].hiddenVisual) continue;
+                var wt = clamp(Number((weights[visibleIndex] || [])[idx] || 0), 0, 1);
+                visibleIndex++;
+                if (wt <= 0) continue;
+                total += wt;
+                red += state.components[k].color[0] * 255 * wt;
+                green += state.components[k].color[1] * 255 * wt;
+                blue += state.components[k].color[2] * 255 * wt;
+            }
+            if (total > 0) {
+                var bg = Math.max(0, 1 - total);
+                red += 255 * bg;
+                green += 255 * bg;
+                blue += 255 * bg;
+                ctx.fillStyle = "rgb(" + Math.round(red) + "," + Math.round(green) + "," + Math.round(blue) + ")";
+                ctx.fillRect(col*cellW, r*cellH, Math.ceil(cellW)+1, Math.ceil(cellH)+1);
+            }
+        }
+    }
+    var step = Math.max(1, Math.round(Math.min(state.rows,state.cols)/16));
+    ctx.strokeStyle = "rgba(0,0,0,0.08)";
+    for (col=0; col<=state.cols; col+=step) { ctx.beginPath(); ctx.moveTo(col*cellW,0); ctx.lineTo(col*cellW,h); ctx.stroke(); }
+    for (r=0; r<=state.rows; r+=step) { ctx.beginPath(); ctx.moveTo(0,r*cellH); ctx.lineTo(w,r*cellH); ctx.stroke(); }
+    var component = activeComp();
+    var activeLabel = component ? "active " + component.name : "no active component";
+    document.getElementById("canvas-meta").textContent = state.rows + "x" + state.cols + " | " + activeLabel + " | brush " + state.brushSize;
+}
+function visibleLocal() {
+    ensureMaps();
+    var visibleMaps = [];
+    var visibleModes = [];
+    state.components.forEach(function(comp, k) {
+        if (comp.hiddenVisual) return;
+        visibleMaps.push(state.maps[k]);
+        visibleModes.push(state.opaqueMaps[k]);
+    });
+    return composeLayerMaps(visibleMaps, visibleModes, state.rows * state.cols);
+}
+function composeLayerMaps(maps, opaqueMaps, n) {
+    var nc = maps.length;
+    var weights = maps.map(function(){ return zeroMap(n); });
+    for (var i=0;i<n;i++) {
+        var remaining = 1;
+        for (var k=nc-1;k>=0;k--) {
+            var map = maps[k] || [];
+            var wt = clamp(Number(map[i] || 0), 0, 1);
+            if (wt <= 0) continue;
+            var opaqueMap = opaqueMaps[k] || [];
+            if (Number(opaqueMap[i]) > 0) {
+                weights[k][i] = wt;
+                break;
+            } else {
+                weights[k][i] = wt;
+            }
+        }
+    }
+    return weights;
+}
+function exportSpectra() { readControls(); sendAction("exportSpectra", state); }
+function exportCube() { readControls(); sendAction("exportCube", state); }
+function saveSession() {
+    if (!state) return;
+    openSaveSessionDialog();
+}
+function loadSession() {
+    openLoadSessionDialog();
+}
+
+function initResizeHandle() {
+    var handle = document.getElementById("resize-handle");
+    var panel = document.getElementById("controls-panel");
+    var resizing = false;
+    handle.addEventListener("mousedown", function(e) {
+        e.preventDefault(); resizing = true; handle.classList.add("active");
+        document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none";
+    });
+    document.addEventListener("mousemove", function(e) {
+        if (!resizing) return;
+        var w = clamp(e.clientX, 300, 620);
+        panel.style.width = w + "px";
+        renderAll();
+    });
+    document.addEventListener("mouseup", function() {
+        if (!resizing) return;
+        resizing = false; handle.classList.remove("active");
+        document.body.style.cursor = ""; document.body.style.userSelect = "";
+        renderAll();
+    });
+}
+</script>
+</body>
+</html>
