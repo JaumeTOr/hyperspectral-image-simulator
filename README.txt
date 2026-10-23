@@ -31,6 +31,8 @@ sessions, exports, limitations, and workspace persistence.
 
 License
 -------
+Copyright (c) 2026 Jaume Torner Ortiz.
+
 Released under CC BY-SA 4.0; see LICENSE. Sharing and adaptation, including
 commercial use, require attribution and a link to the license. Shared
 adaptations must use the same or a compatible CC BY-SA license.

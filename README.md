@@ -128,6 +128,8 @@ software citation metadata.
 
 ## License and authorship
 
+Copyright (c) 2026 Jaume Torner Ortiz.
+
 This project is licensed under CC BY-SA 4.0; see `LICENSE`. You may share and
 adapt it, including commercially, if you give appropriate credit, link to the
 license, and indicate changes. If you share adapted material, you must use
