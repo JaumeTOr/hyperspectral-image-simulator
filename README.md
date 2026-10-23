@@ -8,7 +8,7 @@ Affiliation: Universitat de Barcelona
 Hyperspectral Image Simulator is a MATLAB graphical tool for building
 synthetic hyperspectral images. It includes: customizing component spectra, drawing their spatial concentration maps, and
 simulating mixed spectra and hyperspectral image cubes. It is intended for
-simulating datasets to test you methodologies.
+simulating datasets to test your methodologies.
 
 ## Requirements
 
