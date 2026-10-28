@@ -6,7 +6,7 @@ classdef HyperspectralImageSimulator < matlab.apps.AppBase
 % Affiliation: Universitat de Barcelona
 % Copyright (c) 2026 Jaume Torner Ortiz.
 % Version: 0.1.0
-% License: CC BY-SA 4.0 (see LICENSE).
+% License: MIT (see LICENSE).
 % The app combines editable component spectra with image concentration maps.
 
     properties (Access = public)
